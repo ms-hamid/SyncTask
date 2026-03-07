@@ -316,7 +316,7 @@ export async function updateTaskOrder(
       )
     );
 
-    revalidatePath("/");
+    // revalidatePath("/"); // Dihapus untuk menghindari UI 'blink' karena Optimistic Update sudah menangani dari sisi Client
     return { success: true };
   } catch (error: any) {
     console.error("Update Task Order Error:", error);

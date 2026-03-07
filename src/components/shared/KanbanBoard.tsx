@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, startTransition } from "react";
+import React, { useState, useEffect } from "react";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { TaskCard, TaskCardProps } from "./TaskCard";
 import { updateTaskOrder } from "../../actions/project";
@@ -150,18 +150,17 @@ export function KanbanBoard({ tasks: initialTasks }: KanbanBoardProps) {
       order: t.order,
     }));
 
-    // Gunakan startTransition agar frame browser tidak freeze saat API call jalan di background
-    startTransition(async () => {
-      try {
-        const res = await updateTaskOrder(payload);
+    // API ke database di background secara asinkron tanpa memblokir/mengubah timing UI
+    updateTaskOrder(payload).then((res) => {
         if (!res.success) {
-          throw new Error(res.error || "Gagal mengatur urutan.");
+            throw new Error(res.error || "Gagal mengatur urutan.");
         }
-      } catch (error) {
-        // Jika server gagal (misal koneksi putus), kembalikan kartu ke posisi awal (Rollback)
+    }).catch((error) => {
+        // Rollback jika gagal
         setTasks(previousTasks);
-        toast.error("Gagal menyimpan posisi. Terjadi kesalahan pada server. Posisi kartu dikembalikan.");
-      }
+        toast.error("Gagal menyimpan posisi", {
+           description: "Terjadi kesalahan pada server. Posisi kartu dikembalikan."
+        });
     });
   };
 

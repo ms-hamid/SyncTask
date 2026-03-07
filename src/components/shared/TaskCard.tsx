@@ -1,9 +1,10 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Flame } from "lucide-react";
-import React from "react";
+import React, { memo } from "react";
 
 export interface TaskCardProps {
+  id: string;
   title: string;
   description?: string | null;
   status: "TODO" | "DOING" | "DONE";
@@ -68,9 +69,10 @@ function AvatarFallback({ name }: { name: string }) {
 }
 
 // ============================================================
-// Component
+// Component (Dioptimalkan dengan React.memo untuk cegah re-render berlebih)
 // ============================================================
-export function TaskCard({
+export const TaskCard = memo(({
+  id,
   title,
   description,
   status,
@@ -82,7 +84,7 @@ export function TaskCard({
   draggableProps,
   dragHandleProps,
   isDragging,
-}: TaskCardProps) {
+}: TaskCardProps) => {
   const specialty = requiredSpecialty ?? "General";
   const colors = SPECIALTY_COLORS[specialty] ?? SPECIALTY_COLORS["General"];
   const accentBorder = STATUS_ACCENT[status];
@@ -98,7 +100,7 @@ export function TaskCard({
         bg-white dark:bg-slate-800
         shadow-sm shadow-slate-100 dark:shadow-slate-900/40
         border-l-4 ${accentBorder}
-        overflow-hidden cursor-grab active:cursor-grabbing
+        overflow-hidden cursor-grab active:cursor-grabbing will-change-transform
         ${
           isDragging
             ? "shadow-lg shadow-indigo-100 dark:shadow-indigo-900/30 ring-2 ring-indigo-500/20 z-50 opacity-100!"
@@ -150,4 +152,6 @@ export function TaskCard({
       </CardContent>
     </Card>
   );
-}
+});
+
+TaskCard.displayName = "TaskCard";
