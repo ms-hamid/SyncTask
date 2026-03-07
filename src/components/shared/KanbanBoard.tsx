@@ -1,8 +1,5 @@
 import { TaskCard, TaskCardProps } from "./TaskCard";
 
-// ============================================================
-// Types
-// ============================================================
 export type TaskStatus = "TODO" | "DOING" | "DONE";
 
 export interface KanbanTask extends Omit<TaskCardProps, "status"> {
@@ -32,47 +29,44 @@ const COLUMNS: {
     id: "TODO",
     label: "To Do",
     emoji: "📋",
-    bg: "bg-slate-50",
-    headerBg: "bg-slate-100",
-    headerText: "text-slate-700",
-    countBg: "bg-slate-200",
-    countText: "text-slate-600",
-    border: "border-slate-200",
+    bg: "bg-slate-50 dark:bg-slate-900/50",
+    headerBg: "bg-slate-100 dark:bg-slate-800/80",
+    headerText: "text-slate-700 dark:text-slate-300",
+    countBg: "bg-slate-200 dark:bg-slate-700",
+    countText: "text-slate-600 dark:text-slate-300",
+    border: "border-slate-200 dark:border-slate-700/60",
   },
   {
     id: "DOING",
     label: "In Progress",
     emoji: "⚡",
-    bg: "bg-amber-50",
-    headerBg: "bg-amber-100",
-    headerText: "text-amber-800",
-    countBg: "bg-amber-200",
-    countText: "text-amber-700",
-    border: "border-amber-200",
+    bg: "bg-amber-50 dark:bg-amber-950/30",
+    headerBg: "bg-amber-100 dark:bg-amber-900/40",
+    headerText: "text-amber-800 dark:text-amber-300",
+    countBg: "bg-amber-200 dark:bg-amber-800/60",
+    countText: "text-amber-700 dark:text-amber-300",
+    border: "border-amber-200 dark:border-amber-800/40",
   },
   {
     id: "DONE",
     label: "Done",
     emoji: "✅",
-    bg: "bg-emerald-50",
-    headerBg: "bg-emerald-100",
-    headerText: "text-emerald-800",
-    countBg: "bg-emerald-200",
-    countText: "text-emerald-700",
-    border: "border-emerald-200",
+    bg: "bg-emerald-50 dark:bg-emerald-950/30",
+    headerBg: "bg-emerald-100 dark:bg-emerald-900/40",
+    headerText: "text-emerald-800 dark:text-emerald-300",
+    countBg: "bg-emerald-200 dark:bg-emerald-800/60",
+    countText: "text-emerald-700 dark:text-emerald-300",
+    border: "border-emerald-200 dark:border-emerald-800/40",
   },
 ];
 
-// ============================================================
-// Empty state subcomponent
-// ============================================================
 function EmptyColumn({ label }: { label: string }) {
   return (
     <div className="flex flex-col items-center justify-center py-12 text-center">
-      <div className="w-10 h-10 rounded-full bg-white/60 flex items-center justify-center mb-3 shadow-sm">
+      <div className="w-10 h-10 rounded-full bg-white/60 dark:bg-slate-800/60 flex items-center justify-center mb-3 shadow-sm">
         <span className="text-lg">✦</span>
       </div>
-      <p className="text-xs text-slate-400 font-medium">
+      <p className="text-xs text-slate-400 dark:text-slate-500 font-medium">
         Belum ada task di {label}
       </p>
     </div>
@@ -91,25 +85,16 @@ export function KanbanBoard({ tasks }: KanbanBoardProps) {
         return (
           <div
             key={col.id}
-            className={`
-              flex flex-col rounded-2xl border ${col.border}
-              ${col.bg} overflow-hidden min-h-[400px]
-            `}
+            className={`flex flex-col rounded-2xl border ${col.border} ${col.bg} overflow-hidden min-h-[400px]`}
           >
             {/* Column Header */}
             <div className={`flex items-center justify-between px-4 py-3 ${col.headerBg}`}>
               <div className="flex items-center gap-2">
                 <span className="text-base" aria-hidden="true">{col.emoji}</span>
-                <h2 className={`text-sm font-bold ${col.headerText}`}>
-                  {col.label}
-                </h2>
+                <h2 className={`text-sm font-bold ${col.headerText}`}>{col.label}</h2>
               </div>
               <span
-                className={`
-                  inline-flex items-center justify-center
-                  min-w-[22px] h-[22px] px-1.5 rounded-full text-xs font-bold
-                  ${col.countBg} ${col.countText}
-                `}
+                className={`inline-flex items-center justify-center min-w-[22px] h-[22px] px-1.5 rounded-full text-xs font-bold ${col.countBg} ${col.countText}`}
               >
                 {colTasks.length}
               </span>
@@ -120,9 +105,7 @@ export function KanbanBoard({ tasks }: KanbanBoardProps) {
               {colTasks.length === 0 ? (
                 <EmptyColumn label={col.label} />
               ) : (
-                colTasks.map((task) => (
-                  <TaskCard key={task.id} {...task} />
-                ))
+                colTasks.map((task) => <TaskCard key={task.id} {...task} />)
               )}
             </div>
           </div>
