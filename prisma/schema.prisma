@@ -1,14 +1,115 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
-  provider = "prisma-client"
-  output   = "../app/generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
+}
+
+// ============================================================
+// Model: User
+// ============================================================
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String?
+  avatarUrl String?
+  createdAt DateTime @default(now())
+
+  memberships TeamMembership[]
+  tasks       Task[]           @relation("TaskAssignee")
+}
+
+// ============================================================
+// Model: Team
+// ============================================================
+model Team {
+  id        String   @id @default(uuid())
+  name      String
+  createdAt DateTime @default(now())
+
+  members      TeamMembership[]
+  projects     Project[]
+  subscription Subscription?
+}
+
+// ============================================================
+// Model: TeamMembership (Join table User <-> Team)
+// ============================================================
+model TeamMembership {
+  id        String  @id @default(uuid())
+  userId    String
+  teamId    String
+  role      Role
+  specialty String? // e.g. 'Frontend', 'Backend', 'Design', 'DevOps'
+
+  user User @relation(fields: [userId], references: [id])
+  team Team @relation(fields: [teamId], references: [id])
+
+  @@unique([userId, teamId])
+}
+
+// ============================================================
+// Model: Project
+// ============================================================
+model Project {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  promptUsed  String?
+  teamId      String
+  createdAt   DateTime @default(now())
+
+  team  Team   @relation(fields: [teamId], references: [id])
+  tasks Task[]
+}
+
+// ============================================================
+// Model: Task
+// ============================================================
+model Task {
+  id          String     @id @default(uuid())
+  title       String
+  description String?
+  status      TaskStatus @default(TODO)
+  effortScore Int?
+  projectId   String
+  assigneeId  String?
+  createdAt   DateTime   @default(now())
+
+  project  Project @relation(fields: [projectId], references: [id])
+  assignee User?   @relation("TaskAssignee", fields: [assigneeId], references: [id])
+}
+
+// ============================================================
+// Model: Subscription (Team plan tracking)
+// ============================================================
+model Subscription {
+  id         String   @id @default(uuid())
+  teamId     String   @unique
+  plan       PlanType @default(FREE)
+  status     String
+  paymentRef String?
+  createdAt  DateTime @default(now())
+
+  team Team @relation(fields: [teamId], references: [id])
+}
+
+// ============================================================
+// Enums
+// ============================================================
+enum TaskStatus {
+  TODO
+  DOING
+  DONE
+}
+
+enum Role {
+  OWNER
+  MEMBER
+}
+
+enum PlanType {
+  FREE
+  PRO
 }
