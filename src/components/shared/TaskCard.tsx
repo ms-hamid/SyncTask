@@ -1,6 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Flame } from "lucide-react";
+import React from "react";
 
 export interface TaskCardProps {
   title: string;
@@ -10,6 +11,11 @@ export interface TaskCardProps {
   requiredSpecialty?: string | null;
   assigneeName?: string | null;
   assigneeAvatar?: string | null;
+  // DnD Props
+  innerRef?: React.Ref<HTMLDivElement>;
+  draggableProps?: Record<string, any>;
+  dragHandleProps?: Record<string, any> | null;
+  isDragging?: boolean;
 }
 
 // ============================================================
@@ -72,6 +78,10 @@ export function TaskCard({
   requiredSpecialty,
   assigneeName,
   assigneeAvatar,
+  innerRef,
+  draggableProps,
+  dragHandleProps,
+  isDragging,
 }: TaskCardProps) {
   const specialty = requiredSpecialty ?? "General";
   const colors = SPECIALTY_COLORS[specialty] ?? SPECIALTY_COLORS["General"];
@@ -79,26 +89,32 @@ export function TaskCard({
 
   return (
     <Card
+      ref={innerRef}
+      {...draggableProps}
+      {...dragHandleProps}
       className={`
         group relative rounded-xl
         border border-slate-100 dark:border-slate-700/60
         bg-white dark:bg-slate-800
         shadow-sm shadow-slate-100 dark:shadow-slate-900/40
-        hover:shadow-md hover:shadow-slate-200/70 dark:hover:shadow-slate-900/60
-        hover:-translate-y-0.5 transition-all duration-200
         border-l-4 ${accentBorder}
-        overflow-hidden cursor-pointer
+        overflow-hidden cursor-grab active:cursor-grabbing
+        ${
+          isDragging
+            ? "shadow-lg shadow-indigo-100 dark:shadow-indigo-900/30 ring-2 ring-indigo-500/20 z-50 opacity-100!"
+            : "hover:shadow-md hover:shadow-slate-200/70 dark:hover:shadow-slate-900/60 opacity-100"
+        }
       `}
     >
       <CardContent className="p-4 flex flex-col gap-3">
-        {/* Specialty + Effort */}
-        <div className="flex items-center justify-between gap-2">
+        {/* Header: Specialty + Effort */}
+        <div className="flex items-start justify-between gap-2">
           <Badge className={`px-2 py-0.5 text-xs font-semibold rounded-full border-0 ${colors.bg} ${colors.text}`}>
             <span className={`inline-block w-1.5 h-1.5 rounded-full mr-1.5 ${colors.dot}`} />
             {specialty}
           </Badge>
           {effortScore != null && (
-            <div className="flex items-center gap-1 text-xs text-slate-400">
+            <div className="flex items-center gap-1 text-xs text-slate-400 mt-1">
               <Flame className="w-3 h-3 text-orange-400" />
               <EffortDots score={effortScore} />
             </div>

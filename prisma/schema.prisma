@@ -72,6 +72,7 @@ model Task {
   title       String
   description String?
   status      TaskStatus @default(TODO)
+  order       Int        @default(0)
   effortScore Int?
   projectId   String
   assigneeId  String?

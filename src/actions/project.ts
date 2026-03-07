@@ -1,9 +1,12 @@
 "use server";
 
 import { generateObject } from "ai";
-import { anthropic } from "@ai-sdk/anthropic";
+import { google } from "@ai-sdk/google";
+// import { anthropic } from "@ai-sdk/anthropic";
 import { z } from "zod";
+import { revalidatePath } from "next/cache";
 import { prisma } from "../lib/prisma";
+
 
 // ============================================================
 // Type Definitions
@@ -50,7 +53,7 @@ const ProjectPlanSchema = z.object({
   tasks: z
     .array(TaskSchema)
     .min(3)
-    .max(15)
+    .max(40)
     .describe("Daftar tugas yang dipecah dari deskripsi proyek"),
 });
 
@@ -130,6 +133,46 @@ export async function generateProjectTasks(
 
   try {
     // -------------------------------------------------------
+    // Pre-requisite: Ensure Mock Team and Users exist in DB
+    // -------------------------------------------------------
+    await prisma.team.upsert({
+      where: { id: teamId },
+      update: {},
+      create: { id: teamId, name: "Demo Team" },
+    });
+
+    for (const member of teamMembers) {
+      await prisma.user.upsert({
+        where: { id: member.userId },
+        update: {},
+        create: {
+          id: member.userId,
+          email: `${member.userId.toLowerCase().replace(/\s/g, '')}@demo.com`,
+          name: member.userId, // We use userId as name in the mock data
+        },
+      });
+
+      await prisma.teamMembership.upsert({
+        where: {
+          userId_teamId: {
+            userId: member.userId,
+            teamId: teamId,
+          },
+        },
+        update: {
+          role: "MEMBER",
+          specialty: member.specialty,
+        },
+        create: {
+          userId: member.userId,
+          teamId: teamId,
+          role: "MEMBER",
+          specialty: member.specialty,
+        },
+      });
+    }
+
+    // -------------------------------------------------------
     // Phase 1: AI Generates Project Plan
     // -------------------------------------------------------
     const membersSummary =
@@ -143,8 +186,11 @@ export async function generateProjectTasks(
         : "Tidak ada anggota tim terdaftar.";
 
     const { object: projectPlan } = await generateObject({
-      model: anthropic(
-        (process.env.ANTHROPIC_MODEL ?? "claude-3-5-sonnet-latest") as string
+      // model: anthropic(
+      //   (process.env.ANTHROPIC_MODEL ?? "claude-3-5-sonnet-latest") as string
+      // ),
+      model: google(
+        (process.env.GOOGLE_GENERATIVE_AI_MODEL ?? "gemini-2.5-flash") as string
       ),
       schema: ProjectPlanSchema,
       system: `Kamu adalah Tech Lead dan Scrum Master berpengalaman.
@@ -153,6 +199,7 @@ Untuk setiap tugas, tentukan:
 - Tingkat kesulitan (effortScore 1-5, di mana 1=sangat mudah, 5=sangat kompleks)
 - Keahlian yang dibutuhkan (requiredSpecialty, pilih dari: Frontend, Backend, UI/UX, DevOps, QA, Mobile, Data)
 Pastikan tugas-tugas mencakup seluruh scope proyek: dari setup, implementasi fitur, testing, hingga deployment.
+Buatlah daftar tugas yang komprehensif. Usahakan kelompokkan menjadi maksimal 15 sampai 20 tugas utama yang padat dan jelas agar tidak terlalu membebani tim.
 Gunakan Bahasa Indonesia untuk title dan description.`,
       prompt: `Deskripsi Proyek:\n"${prompt}"\n\nAnggota Tim yang Tersedia:\n${membersSummary}\n\nPecah proyek ini menjadi tugas-tugas yang spesifik dan dapat dikerjakan.`,
     });
@@ -182,6 +229,7 @@ Gunakan Bahasa Indonesia untuk title dan description.`,
         description: task.description,
         effortScore: task.effortScore,
         status: "TODO" as const,
+        order: index,
         projectId: project.id,
         assigneeId: assignments[index]?.assigneeId ?? null,
       }));
@@ -194,6 +242,9 @@ Gunakan Bahasa Indonesia untuk title dan description.`,
         tasksCount: taskData.length,
       };
     });
+
+    // Refresh halaman agar Server Component membaca data terbaru
+    revalidatePath("/");
 
     return {
       success: true,
@@ -211,7 +262,7 @@ Gunakan Bahasa Indonesia untuk title dan description.`,
         return {
           success: false,
           error:
-            "API key Anthropic tidak valid atau tidak ditemukan. Pastikan ANTHROPIC_API_KEY sudah diset di .env.",
+            "API key tidak valid atau tidak ditemukan. Pastikan API KEY sudah diset di .env.",
         };
       }
       if (error.message.includes("rate limit")) {
@@ -227,5 +278,48 @@ Gunakan Bahasa Indonesia untuk title dan description.`,
       success: false,
       error: "Terjadi kesalahan tidak terduga. Silakan coba lagi.",
     };
+  }
+}
+
+// ============================================================
+// Phase 5: Update Task Status & Order (Drag & Drop)
+// ============================================================
+export async function updateTaskStatus(
+  taskId: string,
+  newStatus: "TODO" | "DOING" | "DONE"
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    await prisma.task.update({
+      where: { id: taskId },
+      data: { status: newStatus },
+    });
+
+    revalidatePath("/");
+    return { success: true };
+  } catch (error: any) {
+    console.error("Update Task Error:", error);
+    return { success: false, error: "Gagal memindahkan task." };
+  }
+}
+
+export async function updateTaskOrder(
+  items: { id: string; status: "TODO" | "DOING" | "DONE"; order: number }[]
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    // Jalankan urutan query update secara serentak dalam 1 transaction
+    await prisma.$transaction(
+      items.map((item) =>
+        prisma.task.update({
+          where: { id: item.id },
+          data: { status: item.status, order: item.order },
+        })
+      )
+    );
+
+    revalidatePath("/");
+    return { success: true };
+  } catch (error: any) {
+    console.error("Update Task Order Error:", error);
+    return { success: false, error: "Gagal mengatur urutan tugas." };
   }
 }

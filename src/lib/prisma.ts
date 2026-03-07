@@ -1,14 +1,11 @@
 import { PrismaClient } from "@prisma/client";
+import { Pool } from "pg";
+import { PrismaPg } from "@prisma/adapter-pg";
 
 // ============================================================
 // Prisma Client Singleton untuk Next.js App Router
-//
-// Next.js hot-reload akan membuat module di-reinisialisasi
-// berkali-kali — tanpa singleton, setiap reload membuat
-// koneksi database baru hingga menghabiskan connection pool.
-//
-// Solusi: simpan instance di `globalThis`.
-// Ref: https://www.prisma.io/docs/guides/other/troubleshooting-orm/help-articles/nextjs-prisma-client-dev-practices
+// Endpoint database diambil melalui environment dan dieksekusi 
+// melalui adapter native Node.js (Prisma 7 standard)
 // ============================================================
 
 const globalForPrisma = globalThis as unknown as {
@@ -16,12 +13,18 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 function createPrismaClient(): PrismaClient {
+  const connectionString = process.env.DATABASE_URL;
+  const pool = new Pool({ connectionString });
+  const adapter = new PrismaPg(pool);
+
   if (process.env.NODE_ENV === "development") {
     return new PrismaClient({
+      adapter,
       log: ["query", "error", "warn"],
     });
   }
   return new PrismaClient({
+    adapter,
     log: ["error"],
   });
 }
