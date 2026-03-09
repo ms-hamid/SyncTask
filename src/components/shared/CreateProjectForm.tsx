@@ -4,25 +4,56 @@ import { useState, useTransition } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, Sparkles } from "lucide-react";
+import { Loader2, Sparkles, Plus, Trash2, Users } from "lucide-react";
+import { Input } from "@/components/ui/input";
+
+export interface TeamMemberFormInput {
+  name: string;
+  specialty: string;
+}
 
 interface CreateProjectFormProps {
-  onSubmit: (prompt: string) => Promise<void>;
+  onSubmit: (prompt: string, teamMembers: TeamMemberFormInput[]) => Promise<void>;
 }
 
 export function CreateProjectForm({ onSubmit }: CreateProjectFormProps) {
   const [prompt, setPrompt] = useState("");
+  const [teamMembers, setTeamMembers] = useState<TeamMemberFormInput[]>([
+    { name: "Ahmad", specialty: "Frontend" },
+    { name: "Siti", specialty: "Backend" },
+  ]);
   const [isPending, startTransition] = useTransition();
 
-  const isDisabled = isPending || prompt.trim().length < 10;
+  // Disable submit if prompt is too short or if there are no team members or empty names
+  const isDisabled = 
+    isPending || 
+    prompt.trim().length < 10 || 
+    teamMembers.length === 0 || 
+    teamMembers.some((m) => !m.name.trim());
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (isDisabled) return;
     startTransition(async () => {
-      await onSubmit(prompt.trim());
+      // Filter out any purely empty members just in case
+      const validMembers = teamMembers.filter((m) => m.name.trim() !== "");
+      await onSubmit(prompt.trim(), validMembers);
     });
   }
+
+  const addTeamMember = () => {
+    setTeamMembers([...teamMembers, { name: "", specialty: "" }]);
+  };
+
+  const removeTeamMember = (index: number) => {
+    setTeamMembers(teamMembers.filter((_, i) => i !== index));
+  };
+
+  const updateTeamMember = (index: number, field: keyof TeamMemberFormInput, value: string) => {
+    const updated = [...teamMembers];
+    updated[index][field] = value;
+    setTeamMembers(updated);
+  };
 
   return (
     <div className="w-full max-w-2xl mx-auto">
@@ -68,6 +99,63 @@ export function CreateProjectForm({ onSubmit }: CreateProjectFormProps) {
               <div className="absolute bottom-3 right-3 text-xs text-slate-300 dark:text-slate-600 select-none">
                 {prompt.length}
               </div>
+            </div>
+
+            {/* Tim & Anggota */}
+            <div className="flex flex-col gap-3 mt-2 border-t border-slate-100 dark:border-slate-800 pt-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Users className="w-4 h-4 text-slate-400 dark:text-slate-500" />
+                  <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                    Anggota Tim
+                  </h3>
+                </div>
+                <span className="text-xs text-slate-500 dark:text-slate-400">
+                  {teamMembers.length} Anggota
+                </span>
+              </div>
+
+              <div className="space-y-3">
+                {teamMembers.map((member, index) => (
+                  <div key={index} className="flex items-center gap-3">
+                    <Input
+                      placeholder="Nama (e.g. Budi)"
+                      value={member.name}
+                      onChange={(e) => updateTeamMember(index, "name", e.target.value)}
+                      disabled={isPending}
+                      className="flex-1 rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
+                    />
+                    <Input
+                      placeholder="Peran/Specialty (e.g. Frontend)"
+                      value={member.specialty}
+                      onChange={(e) => updateTeamMember(index, "specialty", e.target.value)}
+                      disabled={isPending}
+                      className="flex-1 rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => removeTeamMember(index)}
+                      disabled={isPending || teamMembers.length <= 1}
+                      className="shrink-0 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={addTeamMember}
+                disabled={isPending || teamMembers.length >= 10}
+                className="w-full rounded-xl border-dashed border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 mt-2"
+              >
+                <Plus className="w-4 h-4 mr-1" /> Tambah Anggota Tim
+              </Button>
             </div>
 
             <Button

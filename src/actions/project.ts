@@ -46,6 +46,9 @@ const TaskSchema = z.object({
     .describe(
       "Keahlian yang dibutuhkan, contoh: 'Frontend', 'Backend', 'UI/UX', 'DevOps', 'QA'"
     ),
+  assigneeName: z
+    .string()
+    .describe("Nama anggota tim (dipilih TEPAT dari daftar Anggota Tim yang Tersedia) yang akan mengerjakan tugas ini"),
 });
 
 const ProjectPlanSchema = z.object({
@@ -83,27 +86,31 @@ function assignTasksToMembers(
       return { assigneeId: null, workload: 0 };
     }
 
-    // Cari kandidat: anggota dengan specialty yang cocok
-    const specialists = teamMembers.filter(
-      (m) =>
-        m.specialty?.toLowerCase() === task.requiredSpecialty.toLowerCase()
-    );
-
-    // Pool yang digunakan untuk assignment (specialist dulu, fallback semua)
-    const pool = specialists.length > 0 ? specialists : teamMembers;
-
-    // Pilih dari pool: yang workload-nya paling rendah
-    const assigned = pool.reduce((lightest, current) => {
-      const currentLoad = workloadMap.get(current.userId) ?? 0;
-      const lightestLoad = workloadMap.get(lightest.userId) ?? 0;
-      return currentLoad < lightestLoad ? current : lightest;
-    });
+    // AI selects the assignee directly via name -> map to userId
+    const assignedMember = teamMembers.find(m => m.userId.toLowerCase() === task.assigneeName.toLowerCase());
+    
+    // Fallback: Use the old logic if AI fails to pick a correct name
+    if (!assignedMember) {
+      const specialists = teamMembers.filter(
+        (m) =>
+          m.specialty?.toLowerCase() === task.requiredSpecialty.toLowerCase()
+      );
+      const pool = specialists.length > 0 ? specialists : teamMembers;
+      const assignedFallback = pool.reduce((lightest, current) => {
+        const currentLoad = workloadMap.get(current.userId) ?? 0;
+        const lightestLoad = workloadMap.get(lightest.userId) ?? 0;
+        return currentLoad < lightestLoad ? current : lightest;
+      });
+      const newLoad = (workloadMap.get(assignedFallback.userId) ?? 0) + task.effortScore;
+      workloadMap.set(assignedFallback.userId, newLoad);
+      return { assigneeId: assignedFallback.userId, workload: newLoad };
+    }
 
     // Update workload tracker
-    const newLoad = (workloadMap.get(assigned.userId) ?? 0) + task.effortScore;
-    workloadMap.set(assigned.userId, newLoad);
+    const newLoad = (workloadMap.get(assignedMember.userId) ?? 0) + task.effortScore;
+    workloadMap.set(assignedMember.userId, newLoad);
 
-    return { assigneeId: assigned.userId, workload: newLoad };
+    return { assigneeId: assignedMember.userId, workload: newLoad };
   });
 }
 
@@ -198,6 +205,7 @@ Tugasmu adalah memecah deskripsi proyek dari user menjadi tugas-tugas teknis yan
 Untuk setiap tugas, tentukan:
 - Tingkat kesulitan (effortScore 1-5, di mana 1=sangat mudah, 5=sangat kompleks)
 - Keahlian yang dibutuhkan (requiredSpecialty, pilih dari: Frontend, Backend, UI/UX, DevOps, QA, Mobile, Data)
+- Anggota tim yang mengerjakannya (assigneeName). WAJIB pilih SATU NAMA sama persis (case insensitive) dari daftar Anggota Tim yang Tersedia yang paling cocok spesialisasinya.
 Pastikan tugas-tugas mencakup seluruh scope proyek: dari setup, implementasi fitur, testing, hingga deployment.
 Buatlah daftar tugas yang komprehensif. Usahakan kelompokkan menjadi maksimal 15 sampai 20 tugas utama yang padat dan jelas agar tidak terlalu membebani tim.
 Gunakan Bahasa Indonesia untuk title dan description.`,

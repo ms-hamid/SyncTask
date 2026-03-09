@@ -1,39 +1,25 @@
 import { prisma } from "@/src/lib/prisma";
-import { CreateProjectSection, MEMBER_NAMES } from "@/src/components/shared/CreateProjectSection";
-import { KanbanBoard, KanbanTask } from "@/src/components/shared/KanbanBoard";
-import { Sparkles, Kanban, Users } from "lucide-react";
+import { CreateProjectSection } from "@/src/components/shared/CreateProjectSection";
+import { Sparkles, FolderKanban, Calendar, ArrowRight, LayoutDashboard } from "lucide-react";
+import Link from "next/link";
 
 // ============================================================
 // Server Component — data di-fetch langsung di sini
 // Tidak ada 'use client', tidak ada useState/useEffect
 // ============================================================
-export default async function HomePage() {
-  // Ambil project terbaru + semua task-nya
-  const latestProject = await prisma.project.findFirst({
+export default async function DashboardPage() {
+  // Ambil semua project beserta jumlah task dan statusnya
+  const projects = await prisma.project.findMany({
     orderBy: { createdAt: "desc" },
     include: {
-      tasks: {
-        orderBy: { order: "asc" },
+      _count: {
+        select: { tasks: true }
       },
+      tasks: {
+        select: { status: true }
+      }
     },
   });
-
-  // Petakan Task dari DB ke format KanbanTask untuk KanbanBoard
-  const kanbanTasks: KanbanTask[] = latestProject?.tasks.map((task) => ({
-    id: task.id,
-    title: task.title,
-    description: task.description,
-    status: task.status as KanbanTask["status"],
-    order: task.order,
-    effortScore: task.effortScore,
-    requiredSpecialty: null, // specialty tidak tersimpan di Task, bisa ditambah nanti
-    assigneeName: task.assigneeId ? (MEMBER_NAMES[task.assigneeId] ?? task.assigneeId) : null,
-    assigneeAvatar: null,
-  })) ?? [];
-
-  const todoCount  = kanbanTasks.filter((t) => t.status === "TODO").length;
-  const doingCount = kanbanTasks.filter((t) => t.status === "DOING").length;
-  const doneCount  = kanbanTasks.filter((t) => t.status === "DONE").length;
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
@@ -69,65 +55,84 @@ export default async function HomePage() {
           <CreateProjectSection />
         </section>
 
-        {/* Kanban Section */}
-        {latestProject ? (
-          <section className="space-y-5">
-            {/* Section Header */}
-            <div className="flex items-start justify-between gap-4 flex-wrap">
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <Kanban className="w-4 h-4 text-slate-400" />
-                  <span className="text-sm font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-                    Proyek Terbaru
-                  </span>
-                </div>
-                <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">
-                  {latestProject.name}
-                </h2>
-                {latestProject.description && (
-                  <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-prose line-clamp-2">
-                    {latestProject.description}
-                  </p>
-                )}
-              </div>
+        {/* Projects Grid Section */}
+        <section className="space-y-6">
+          <div className="flex items-center gap-3 pb-2 border-b border-slate-200 dark:border-slate-800">
+            <LayoutDashboard className="w-5 h-5 text-indigo-500" />
+            <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">
+              Dashboard Proyek
+            </h2>
+          </div>
 
-              {/* Stats */}
-              <div className="flex items-center gap-3 shrink-0">
-                <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 rounded-full px-3 py-1.5">
-                  <Users className="w-3 h-3" />
-                  {kanbanTasks.length} Tasks
-                </div>
-                <div className="flex items-center gap-1 text-xs font-medium">
-                  <span className="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-600" />
-                  <span className="text-slate-500 dark:text-slate-400">{todoCount} Todo</span>
-                </div>
-                <div className="flex items-center gap-1 text-xs font-medium">
-                  <span className="w-2 h-2 rounded-full bg-amber-400" />
-                  <span className="text-slate-500 dark:text-slate-400">{doingCount} Doing</span>
-                </div>
-                <div className="flex items-center gap-1 text-xs font-medium">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                  <span className="text-slate-500 dark:text-slate-400">{doneCount} Done</span>
-                </div>
-              </div>
-            </div>
+          {projects.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {projects.map((project) => {
+                const totalTasks = project._count.tasks;
+                const doneTasks = project.tasks.filter(t => t.status === "DONE").length;
+                const progress = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
 
-            <KanbanBoard tasks={kanbanTasks} />
-          </section>
-        ) : (
-          /* Empty state — belum ada project */
-          <section className="flex flex-col items-center justify-center py-20 text-center">
-            <div className="w-16 h-16 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-4">
-              <Kanban className="w-7 h-7 text-slate-300 dark:text-slate-600" />
+                return (
+                  <Link href={`/project/${project.id}`} key={project.id} className="group">
+                    <div className="flex flex-col h-full p-6 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm hover:shadow-xl hover:border-indigo-400/50 dark:hover:border-indigo-500/50 transition-all duration-300">
+                      
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 group-hover:scale-110 transition-transform">
+                          <FolderKanban className="w-5 h-5" />
+                        </div>
+                        <div className="flex items-center gap-1.5 text-xs font-medium text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800/50 px-2.5 py-1 rounded-full">
+                          <Calendar className="w-3.5 h-3.5" />
+                          {new Date(project.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
+                        </div>
+                      </div>
+
+                      <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 line-clamp-1 mb-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                        {project.name}
+                      </h3>
+                      
+                      {project.description && (
+                        <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-2 flex-grow mb-6">
+                          {project.description}
+                        </p>
+                      )}
+
+                      <div className="mt-auto">
+                        <div className="flex items-center justify-between text-xs font-semibold mb-2">
+                          <span className="text-slate-600 dark:text-slate-300">Progress</span>
+                          <span className={progress === 100 ? "text-emerald-500" : "text-indigo-600 dark:text-indigo-400"}>
+                            {progress}%
+                          </span>
+                        </div>
+                        <div className="w-full h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                          <div 
+                            className={`h-full transition-all duration-700 ${progress === 100 ? 'bg-emerald-500' : 'bg-linear-to-r from-indigo-500 to-purple-500'}`}
+                            style={{ width: `${progress}%` }}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 mt-5 text-sm font-semibold text-indigo-600 dark:text-indigo-400 group-hover:translate-x-1 transition-transform">
+                        Buka Proyek <ArrowRight className="w-4 h-4" />
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })}
             </div>
-            <h3 className="text-lg font-semibold text-slate-600 dark:text-slate-400">
-              Belum ada proyek
-            </h3>
-            <p className="text-sm text-slate-400 dark:text-slate-500 mt-2 max-w-xs">
-              Isi form di atas dan biarkan AI Scrum Master membangun rencana proyekmu.
-            </p>
-          </section>
-        )}
+          ) : (
+            /* Empty state — belum ada project */
+            <div className="flex flex-col items-center justify-center py-20 text-center rounded-2xl border border-dashed border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50">
+              <div className="w-16 h-16 rounded-2xl bg-white dark:bg-slate-800 flex items-center justify-center mb-4 shadow-sm">
+                <LayoutDashboard className="w-7 h-7 text-slate-400 dark:text-slate-500" />
+              </div>
+              <h3 className="text-lg font-semibold text-slate-600 dark:text-slate-300">
+                Belum ada proyek yang dibuat
+              </h3>
+              <p className="text-sm text-slate-400 dark:text-slate-500 mt-2 max-w-sm">
+                Isi form di atas dan biarkan AI Scrum Master merencanakan proyek pertamamu secara instan!
+              </p>
+            </div>
+          )}
+        </section>
       </div>
     </div>
   );

@@ -4,7 +4,13 @@ import React, { useState, useEffect } from "react";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { TaskCard, TaskCardProps } from "./TaskCard";
 import { updateTaskOrder } from "../../actions/project";
+import { createManualTask } from "../../actions/manualTask";
 import { toast } from "sonner";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { Plus } from "lucide-react";
 
 export type TaskStatus = "TODO" | "DOING" | "DONE";
 
@@ -16,6 +22,8 @@ export interface KanbanTask extends Omit<TaskCardProps, "status"> {
 
 interface KanbanBoardProps {
   tasks: KanbanTask[];
+  projectId: string;
+  teamMembers: any[];
 }
 
 // ============================================================
@@ -83,9 +91,16 @@ function EmptyColumn({ label }: { label: string }) {
 // ============================================================
 // Component
 // ============================================================
-export function KanbanBoard({ tasks: initialTasks }: KanbanBoardProps) {
+export function KanbanBoard({ tasks: initialTasks, projectId, teamMembers }: KanbanBoardProps) {
   const [tasks, setTasks] = useState<KanbanTask[]>(initialTasks);
   const [isMounted, setIsMounted] = useState(false);
+  
+  // Manual Add Modal State
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isAddingTask, setIsAddingTask] = useState(false);
+  const [newTaskTitle, setNewTaskTitle] = useState("");
+  const [newTaskDesc, setNewTaskDesc] = useState("");
+  const [newTaskAssignee, setNewTaskAssignee] = useState("");
 
   // Sync state dengan server props jika berubah (misal setelah generate AI baru)
   useEffect(() => {
@@ -162,6 +177,32 @@ export function KanbanBoard({ tasks: initialTasks }: KanbanBoardProps) {
            description: "Terjadi kesalahan pada server. Posisi kartu dikembalikan."
         });
     });
+  };
+
+  const handleCreateManualTask = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTaskTitle.trim()) return;
+    
+    setIsAddingTask(true);
+    const toastId = toast.loading("Menambahkan task...");
+
+    const res = await createManualTask(projectId, {
+      title: newTaskTitle,
+      description: newTaskDesc,
+      assigneeId: newTaskAssignee || null,
+    });
+
+    setIsAddingTask(false);
+    
+    if (res.success) {
+      toast.success("Task ditambahkan!", { id: toastId });
+      setIsAddModalOpen(false);
+      setNewTaskTitle("");
+      setNewTaskDesc("");
+      setNewTaskAssignee("");
+    } else {
+      toast.error("Gagal menambahkan task", { id: toastId, description: res.error });
+    }
   };
 
   if (!isMounted) return null; // Render placeholder bisa ditaruh di sini
@@ -243,13 +284,24 @@ export function KanbanBoard({ tasks: initialTasks }: KanbanBoardProps) {
                               draggableProps={prov.draggableProps}
                               dragHandleProps={prov.dragHandleProps}
                               isDragging={snap.isDragging}
+                              projectId={projectId}
+                              teamMembers={teamMembers}
                               {...task}
                             />
                           )}
                         </Draggable>
                       ))
                     )}
-                    {provided.placeholder}
+                    {/* Add + Button at bottom of TODO */}
+                    {col.id === "TODO" && (
+                       <button
+                         onClick={() => setIsAddModalOpen(true)}
+                         className="flex items-center justify-center gap-2 w-full py-3 mt-2 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 hover:border-indigo-400 dark:hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors text-sm font-medium"
+                       >
+                         <Plus className="w-4 h-4" />
+                         Add Task Manually
+                       </button>
+                    )}
                   </div>
                 </div>
               )}
@@ -258,6 +310,57 @@ export function KanbanBoard({ tasks: initialTasks }: KanbanBoardProps) {
         })}
         </div>
       </DragDropContext>
+
+      {/* Manual Task Modal */}
+      <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Add Manual Task</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleCreateManualTask} className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Title</label>
+              <Input
+                placeholder="e.g. Design Login Page"
+                value={newTaskTitle}
+                onChange={(e) => setNewTaskTitle(e.target.value)}
+                disabled={isAddingTask}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Description</label>
+              <Textarea
+                placeholder="Brief description of the task..."
+                value={newTaskDesc}
+                onChange={(e) => setNewTaskDesc(e.target.value)}
+                disabled={isAddingTask}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Assignee (Optional)</label>
+              <select
+                className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-white file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-slate-500 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-800 dark:bg-slate-950 dark:ring-offset-slate-950 dark:placeholder:text-slate-400 dark:focus-visible:ring-slate-300"
+                value={newTaskAssignee}
+                onChange={(e) => setNewTaskAssignee(e.target.value)}
+                disabled={isAddingTask}
+              >
+                <option value="">Unassigned</option>
+                {teamMembers.map((tm: any) => (
+                  <option key={tm.id} value={tm.userId}>
+                    {tm.user.name} ({tm.specialty || "Member"})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="pt-2 flex justify-end">
+              <Button type="submit" disabled={isAddingTask || !newTaskTitle.trim()}>
+                {isAddingTask ? "Adding..." : "Add Task"}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -12,14 +12,25 @@ export interface TaskCardProps {
   status: "TODO" | "DOING" | "DONE";
   effortScore?: number | null;
   requiredSpecialty?: string | null;
+  assigneeId?: string | null;
   assigneeName?: string | null;
   assigneeAvatar?: string | null;
+  // Context
+  projectId?: string;
+  teamMembers?: any[];
   // DnD Props
   innerRef?: React.Ref<HTMLDivElement>;
   draggableProps?: DraggableProvidedDraggableProps;
   dragHandleProps?: DraggableProvidedDragHandleProps | null;
   isDragging?: boolean;
 }
+
+import { updateTaskDetails, deleteTask } from "@/src/actions/manualTask";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { Trash2, CheckCircle2 } from "lucide-react";
+import { toast } from "sonner";
 
 // ============================================================
 // Helpers
@@ -87,8 +98,11 @@ export const TaskCard = memo(({
   status,
   effortScore,
   requiredSpecialty,
+  assigneeId: initialAssigneeId,
   assigneeName,
   assigneeAvatar,
+  projectId = "",
+  teamMembers = [],
   innerRef,
   draggableProps,
   dragHandleProps,
@@ -99,8 +113,59 @@ export const TaskCard = memo(({
   const colors = SPECIALTY_COLORS[specialty] ?? SPECIALTY_COLORS["General"];
   const accentBorder = STATUS_ACCENT[status];
   
-  const mappedAssignee = assigneeName && TEAM_MAP[assigneeName] 
-    ? TEAM_MAP[assigneeName] 
+  // Inline Editing State
+  const [editTitle, setEditTitle] = useState(title);
+  const [editDesc, setEditDesc] = useState(description || "");
+  const [editAssigneeId, setEditAssigneeId] = useState(initialAssigneeId || "");
+  
+  const isDirty = editTitle !== title || editDesc !== (description || "") || editAssigneeId !== (initialAssigneeId || "");
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // Sync state if props change
+  React.useEffect(() => {
+    setEditTitle(title);
+    setEditDesc(description || "");
+    setEditAssigneeId(initialAssigneeId || "");
+  }, [title, description, initialAssigneeId]);
+
+  const handleSave = async () => {
+    if (!editTitle.trim()) return;
+    setIsSaving(true);
+    const toastId = toast.loading("Menyimpan perubahan...");
+    const res = await updateTaskDetails(id, {
+      title: editTitle,
+      description: editDesc,
+      assigneeId: editAssigneeId || null,
+    });
+    setIsSaving(false);
+    if (res.success) {
+      toast.success("Perubahan disimpan", { id: toastId });
+    } else {
+      toast.error("Gagal menyimpan", { id: toastId, description: res.error });
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!confirm("Hapus task ini?")) return;
+    setIsDeleting(true);
+    const toastId = toast.loading("Menghapus task...");
+    const res = await deleteTask(id);
+    setIsDeleting(false);
+    if (res.success) {
+      toast.success("Task dihapus", { id: toastId });
+      setIsModalOpen(false);
+    } else {
+      toast.error("Gagal menghapus", { id: toastId, description: res.error });
+    }
+  };
+
+  const assignedMember = teamMembers.find(m => m.userId === initialAssigneeId);
+  const mappedAssigneeRole = assignedMember?.specialty || TEAM_MAP[assigneeName ?? ""]?.role || 'Member';
+  const mappedAssigneeColor = TEAM_MAP[assigneeName ?? ""]?.color || 'bg-indigo-500';
+
+  const mappedAssignee = assigneeName && (assignedMember || TEAM_MAP[assigneeName])
+    ? { name: assigneeName, role: mappedAssigneeRole, color: mappedAssigneeColor } 
     : { name: assigneeName ?? '', role: 'Member', color: 'bg-indigo-500' };
 
   return (
@@ -174,9 +239,12 @@ export const TaskCard = memo(({
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogContent className="sm:max-w-[600px] gap-6">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-bold leading-tight">
-              {title}
-            </DialogTitle>
+            <Input 
+              value={editTitle} 
+              onChange={(e) => setEditTitle(e.target.value)} 
+              className="text-2xl font-bold border-0 px-0 h-auto focus-visible:ring-0 shadow-none hover:bg-slate-50 dark:hover:bg-slate-900 rounded-lg transition-colors" 
+              placeholder="Task Title"
+            />
             <DialogDescription className="sr-only">Task details for {title}</DialogDescription>
           </DialogHeader>
 
@@ -191,44 +259,65 @@ export const TaskCard = memo(({
             </Badge>
 
             {effortScore != null && (
-              <div className="flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800 px-2.5 py-1 rounded-full">
-                <Flame className="w-3.5 h-3.5 text-orange-400" />
-                Effort: {effortScore}/5
-              </div>
+               <div className="flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800 px-2.5 py-1 rounded-full">
+                 <Flame className="w-3.5 h-3.5 text-orange-400" />
+                 Effort: {effortScore}/5
+               </div>
             )}
           </div>
 
           <div className="space-y-2">
             <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200">Description</h4>
-            <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-lg border border-slate-100 dark:border-slate-800 max-h-[300px] overflow-y-auto">
-              {description ? (
-                <p className="whitespace-pre-wrap text-sm text-muted-foreground leading-relaxed">
-                   {description}
-                </p>
-              ) : (
-                <p className="text-sm text-slate-400 italic">No description provided.</p>
-              )}
+            <div className="bg-slate-50 dark:bg-slate-900/50 p-2 rounded-lg border border-slate-100 dark:border-slate-800 max-h-[300px] overflow-y-auto hover:border-indigo-200 transition-colors">
+              <Textarea 
+                value={editDesc} 
+                onChange={(e) => setEditDesc(e.target.value)} 
+                className="min-h-[100px] border-0 focus-visible:ring-0 shadow-none bg-transparent resize-y p-2"
+                placeholder="No description provided. Click to add one."
+              />
             </div>
           </div>
 
-          {assigneeName && (
-            <div className="flex items-center gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
-              {assigneeAvatar ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={assigneeAvatar} alt={mappedAssignee.name} className="w-8 h-8 rounded-full object-cover ring-2 ring-white dark:ring-slate-800 shadow-sm" />
-              ) : (
-                <div className={`w-8 h-8 rounded-full ${mappedAssignee.color} flex items-center justify-center shrink-0 ring-2 ring-white dark:ring-slate-800 shadow-sm`}>
-                  <span className="text-xs font-bold text-white">{mappedAssignee.name.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase()}</span>
-                </div>
-              )}
-              <div className="flex flex-col">
-                <span className="text-xs text-slate-500 font-medium leading-none">Assigned to</span>
-                <span className="text-sm text-slate-800 dark:text-slate-200 font-semibold mt-1">
-                  {mappedAssignee.name} <span className="text-slate-400 dark:text-slate-500 font-normal ml-1">({mappedAssignee.role})</span>
-                </span>
-              </div>
-            </div>
-          )}
+          <div className="flex items-center gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+             <div className="flex flex-col flex-1">
+                <span className="text-xs text-slate-500 font-medium mb-1">Assignee</span>
+                <select
+                  className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-white focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-500 hover:border-indigo-300 dark:border-slate-800 dark:bg-slate-950 dark:ring-offset-slate-950 dark:focus-visible:ring-indigo-600"
+                  value={editAssigneeId}
+                  onChange={(e) => setEditAssigneeId(e.target.value)}
+                >
+                  <option value="">Unassigned</option>
+                  {teamMembers.map((tm: any) => (
+                    <option key={tm.id} value={tm.userId}>
+                      {tm.user.name} ({tm.specialty || "Member"})
+                    </option>
+                  ))}
+                </select>
+             </div>
+          </div>
+
+          <div className="flex items-center justify-between pt-4 mt-2 border-t border-slate-100 dark:border-slate-800">
+             <Button 
+               variant="destructive" 
+               size="icon" 
+               onClick={handleDelete}
+               disabled={isDeleting}
+               title="Delete Task"
+             >
+               <Trash2 className="w-4 h-4" />
+             </Button>
+
+             {isDirty && (
+                <Button 
+                  onClick={handleSave} 
+                  disabled={isSaving || !editTitle.trim()}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-200"
+                >
+                  <CheckCircle2 className="w-4 h-4 mr-2" />
+                  {isSaving ? "Saving..." : "Save Changes"}
+                </Button>
+             )}
+          </div>
         </DialogContent>
       </Dialog>
     </>

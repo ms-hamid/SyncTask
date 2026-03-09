@@ -6,26 +6,17 @@ import { CreateProjectForm } from "@/src/components/shared/CreateProjectForm";
 import { generateProjectTasks, TeamMemberInput } from "@/src/actions/project";
 
 // ============================================================
-// Mock data MVP — diganti dengan data real dari auth/DB nanti
+// CreateProjectSection
 // ============================================================
 const MOCK_TEAM_ID = "team-mvp-001";
 
-const MOCK_MEMBERS: TeamMemberInput[] = [
-  { userId: "u1", specialty: "Frontend", role: "MEMBER" },
-  { userId: "u2", specialty: "Backend",  role: "MEMBER" },
-  { userId: "u3", specialty: "UI/UX",    role: "OWNER"  },
-];
+// Nama anggota untuk ditampilkan di TaskCard (fallback map lama, bisa dibuang perlahan, atau kita siapkan struktur dinamis)
+export const MEMBER_NAMES: Record<string, string> = {};
 
-// Nama anggota untuk ditampilkan di TaskCard (keyed by userId)
-export const MEMBER_NAMES: Record<string, string> = {
-  u1: "Ahmad",
-  u2: "Siti",
-  u3: "Budi",
-};
+import { TeamMemberFormInput } from "./CreateProjectForm";
 
 interface CreateProjectSectionProps {
   teamId?: string;
-  members?: TeamMemberInput[];
 }
 
 // ============================================================
@@ -35,17 +26,23 @@ interface CreateProjectSectionProps {
 // ============================================================
 export function CreateProjectSection({
   teamId = MOCK_TEAM_ID,
-  members = MOCK_MEMBERS,
 }: CreateProjectSectionProps) {
   const [key, setKey] = useState(0); // reset form dengan mengubah key
 
-  async function handleSubmit(prompt: string) {
+  async function handleSubmit(prompt: string, teamMembers: TeamMemberFormInput[]) {
+    // Map form inputs to Action inputs
+    // Gunakan nama sbg userId agar auto tersimpan dgn unik
+    const dynamicMembers: TeamMemberInput[] = teamMembers.map((m) => ({
+      userId: m.name, // Nama digunakan sbg alias/ID untuk MVP kali ini
+      specialty: m.specialty || "Member",
+      role: "MEMBER"
+    }));
     const toastId = toast.loading("AI Scrum Master sedang bekerja...", {
       description: "Memecah proyek menjadi task terstruktur...",
     });
 
     try {
-      const result = await generateProjectTasks(prompt, teamId, members);
+      const result = await generateProjectTasks(prompt, teamId, dynamicMembers);
 
       if (result.success) {
         toast.success(`Proyek "${result.projectName}" berhasil dibuat! 🎉`, {
@@ -74,4 +71,4 @@ export function CreateProjectSection({
   return <CreateProjectForm key={key} onSubmit={handleSubmit} />;
 }
 
-export { MOCK_TEAM_ID, MOCK_MEMBERS };
+export { MOCK_TEAM_ID };
