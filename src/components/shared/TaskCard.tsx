@@ -1,7 +1,9 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Flame } from "lucide-react";
-import React, { memo } from "react";
+import React, { memo, useState } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { DraggableProvidedDraggableProps, DraggableProvidedDragHandleProps } from "@hello-pangea/dnd";
 
 export interface TaskCardProps {
   id: string;
@@ -14,14 +16,20 @@ export interface TaskCardProps {
   assigneeAvatar?: string | null;
   // DnD Props
   innerRef?: React.Ref<HTMLDivElement>;
-  draggableProps?: Record<string, any>;
-  dragHandleProps?: Record<string, any> | null;
+  draggableProps?: DraggableProvidedDraggableProps;
+  dragHandleProps?: DraggableProvidedDragHandleProps | null;
   isDragging?: boolean;
 }
 
 // ============================================================
 // Helpers
 // ============================================================
+
+const TEAM_MAP: Record<string, { name: string; role: string; color: string }> = {
+  'u1': { name: 'Ahmad', role: 'Frontend', color: 'bg-blue-500' },
+  'u2': { name: 'Siti', role: 'Backend', color: 'bg-emerald-500' },
+  'u3': { name: 'Budi', role: 'UI/UX', color: 'bg-purple-500' }
+};
 
 type SpecialtyColor = { bg: string; text: string; dot: string };
 
@@ -59,10 +67,11 @@ function EffortDots({ score }: { score: number }) {
   );
 }
 
-function AvatarFallback({ name }: { name: string }) {
+function AvatarFallback({ name, colorClass }: { name: string; colorClass?: string }) {
   const initials = name.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase();
+  const bg = colorClass || "bg-linear-to-br from-indigo-400 to-purple-500";
   return (
-    <div className="w-6 h-6 rounded-full bg-linear-to-br from-indigo-400 to-purple-500 flex items-center justify-center shrink-0">
+    <div className={`w-6 h-6 rounded-full ${bg} flex items-center justify-center shrink-0 ring-2 ring-white dark:ring-slate-800 shadow-[0_2px_4px_rgba(0,0,0,0.1)]`}>
       <span className="text-[9px] font-bold text-white">{initials}</span>
     </div>
   );
@@ -85,16 +94,24 @@ export const TaskCard = memo(({
   dragHandleProps,
   isDragging,
 }: TaskCardProps) => {
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const specialty = requiredSpecialty ?? "General";
   const colors = SPECIALTY_COLORS[specialty] ?? SPECIALTY_COLORS["General"];
   const accentBorder = STATUS_ACCENT[status];
+  
+  const mappedAssignee = assigneeName && TEAM_MAP[assigneeName] 
+    ? TEAM_MAP[assigneeName] 
+    : { name: assigneeName ?? '', role: 'Member', color: 'bg-indigo-500' };
 
   return (
-    <Card
-      ref={innerRef}
-      {...draggableProps}
-      {...dragHandleProps}
-      className={`
+    <>
+      <Card
+        id={id}
+        ref={innerRef}
+        {...draggableProps}
+        {...dragHandleProps}
+        onClick={() => setIsModalOpen(true)}
+        className={`
         group relative rounded-xl
         border border-slate-100 dark:border-slate-700/60
         bg-white dark:bg-slate-800
@@ -137,20 +154,84 @@ export const TaskCard = memo(({
 
         {/* Assignee */}
         {assigneeName && (
-          <div className="flex items-center gap-2 pt-2 border-t border-slate-50 dark:border-slate-700/50">
+          <div className="flex items-center gap-2 pt-2 border-t border-slate-50 dark:border-slate-700/50 transition-colors group-hover:border-slate-100 dark:group-hover:border-slate-700">
             {assigneeAvatar ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={assigneeAvatar} alt={assigneeName} className="w-6 h-6 rounded-full object-cover" />
+              <img src={assigneeAvatar} alt={mappedAssignee.name} className="w-6 h-6 rounded-full object-cover ring-2 ring-white dark:ring-slate-800" />
             ) : (
-              <AvatarFallback name={assigneeName} />
+              <AvatarFallback name={mappedAssignee.name} colorClass={mappedAssignee.color} />
             )}
-            <span className="text-xs text-slate-500 dark:text-slate-400 font-medium truncate">
-              {assigneeName}
-            </span>
+            <div className="flex flex-col overflow-hidden">
+              <span className="text-xs text-slate-700 dark:text-slate-300 font-medium truncate">
+                {mappedAssignee.name}
+              </span>
+            </div>
           </div>
         )}
       </CardContent>
     </Card>
+
+      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <DialogContent className="sm:max-w-[600px] gap-6">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold leading-tight">
+              {title}
+            </DialogTitle>
+            <DialogDescription className="sr-only">Task details for {title}</DialogDescription>
+          </DialogHeader>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <Badge variant="outline" className={`px-2.5 py-0.5 text-xs font-semibold rounded-full border-0 ${STATUS_ACCENT[status].replace('border-l-', 'bg-').replace('dark:border-l-', 'dark:bg-').split(' ')[0]} ${status === 'TODO' ? 'text-slate-800 bg-slate-100' : status === 'DOING' ? 'text-amber-800 bg-amber-100' : 'text-emerald-800 bg-emerald-100'} dark:bg-opacity-20`}>
+              {status}
+            </Badge>
+
+            <Badge className={`px-2.5 py-0.5 text-xs font-semibold rounded-full border-0 ${colors.bg} ${colors.text}`}>
+              <span className={`inline-block w-1.5 h-1.5 rounded-full mr-1.5 ${colors.dot}`} />
+              {specialty}
+            </Badge>
+
+            {effortScore != null && (
+              <div className="flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800 px-2.5 py-1 rounded-full">
+                <Flame className="w-3.5 h-3.5 text-orange-400" />
+                Effort: {effortScore}/5
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200">Description</h4>
+            <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-lg border border-slate-100 dark:border-slate-800 max-h-[300px] overflow-y-auto">
+              {description ? (
+                <p className="whitespace-pre-wrap text-sm text-muted-foreground leading-relaxed">
+                   {description}
+                </p>
+              ) : (
+                <p className="text-sm text-slate-400 italic">No description provided.</p>
+              )}
+            </div>
+          </div>
+
+          {assigneeName && (
+            <div className="flex items-center gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+              {assigneeAvatar ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={assigneeAvatar} alt={mappedAssignee.name} className="w-8 h-8 rounded-full object-cover ring-2 ring-white dark:ring-slate-800 shadow-sm" />
+              ) : (
+                <div className={`w-8 h-8 rounded-full ${mappedAssignee.color} flex items-center justify-center shrink-0 ring-2 ring-white dark:ring-slate-800 shadow-sm`}>
+                  <span className="text-xs font-bold text-white">{mappedAssignee.name.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase()}</span>
+                </div>
+              )}
+              <div className="flex flex-col">
+                <span className="text-xs text-slate-500 font-medium leading-none">Assigned to</span>
+                <span className="text-sm text-slate-800 dark:text-slate-200 font-semibold mt-1">
+                  {mappedAssignee.name} <span className="text-slate-400 dark:text-slate-500 font-normal ml-1">({mappedAssignee.role})</span>
+                </span>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
   );
 });
 

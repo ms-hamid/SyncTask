@@ -296,7 +296,7 @@ export async function updateTaskStatus(
 
     revalidatePath("/");
     return { success: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Update Task Error:", error);
     return { success: false, error: "Gagal memindahkan task." };
   }
@@ -318,7 +318,7 @@ export async function updateTaskOrder(
 
     // revalidatePath("/"); // Dihapus untuk menghindari UI 'blink' karena Optimistic Update sudah menangani dari sisi Client
     return { success: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Update Task Order Error:", error);
     return { success: false, error: "Gagal mengatur urutan tugas." };
   }

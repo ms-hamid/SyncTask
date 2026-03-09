@@ -155,7 +155,7 @@ export function KanbanBoard({ tasks: initialTasks }: KanbanBoardProps) {
         if (!res.success) {
             throw new Error(res.error || "Gagal mengatur urutan.");
         }
-    }).catch((error) => {
+    }).catch((_error) => {
         // Rollback jika gagal
         setTasks(previousTasks);
         toast.error("Gagal menyimpan posisi", {
@@ -166,9 +166,30 @@ export function KanbanBoard({ tasks: initialTasks }: KanbanBoardProps) {
 
   if (!isMounted) return null; // Render placeholder bisa ditaruh di sini
 
+  const totalTasks = tasks.length;
+  const doneTasks = tasks.filter((t) => t.status === "DONE").length;
+  const progressPercentage = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
+
   return (
-    <DragDropContext onDragEnd={onDragEnd}>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
+    <div className="flex flex-col gap-6 w-full">
+      {/* Progress Section */}
+      {totalTasks > 0 && (
+        <div className="flex flex-col gap-2 px-1">
+          <div className="flex items-center justify-between text-sm font-medium">
+            <span className="text-slate-700 dark:text-slate-300 font-semibold tracking-tight">Project Progress</span>
+            <span className="text-slate-500 font-medium">{doneTasks}/{totalTasks} Tasks ({progressPercentage}%)</span>
+          </div>
+          <div className="h-2.5 w-full bg-slate-100 dark:bg-slate-800/80 rounded-full overflow-hidden shadow-inner border border-slate-200/50 dark:border-slate-700/50">
+            <div 
+              className="h-full bg-linear-to-r from-emerald-400 to-emerald-500 dark:from-emerald-500 dark:to-emerald-400 transition-all duration-700 ease-in-out rounded-full shadow-[0_0_10px_rgba(52,211,153,0.4)]" 
+              style={{ width: `${progressPercentage}%` }}
+            />
+          </div>
+        </div>
+      )}
+
+      <DragDropContext onDragEnd={onDragEnd}>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
         {COLUMNS.map((col) => {
           const colTasks = tasks
             .filter((t) => t.status === col.id)
@@ -235,7 +256,8 @@ export function KanbanBoard({ tasks: initialTasks }: KanbanBoardProps) {
             </Droppable>
           );
         })}
-      </div>
-    </DragDropContext>
+        </div>
+      </DragDropContext>
+    </div>
   );
 }
