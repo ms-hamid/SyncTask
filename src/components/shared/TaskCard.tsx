@@ -123,7 +123,7 @@ export const TaskCard = memo(({
   const isDirty = editTitle !== title || editDesc !== (description || "") || editAssigneeId !== (initialAssigneeId || "");
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   // Sync state if props change
   React.useEffect(() => {
@@ -254,12 +254,12 @@ export const TaskCard = memo(({
           <div className="flex flex-wrap items-center gap-3">
             <Select 
               value={status} 
-              disabled={isUpdatingStatus}
+              disabled={isUpdating}
               onValueChange={async (val: "TODO" | "DOING" | "DONE") => {
                 const toastId = toast.loading("Mengubah status...");
-                setIsUpdatingStatus(true);
+                setIsUpdating(true);
                 const res = await updateTaskStatus(id, val);
-                setIsUpdatingStatus(false);
+                setIsUpdating(false);
                 if (res.success) {
                   toast.success("Status berhasil diubah!", { id: toastId });
                   setIsModalOpen(false); // Opsional: tutup modal setelah ubah status, atau biar terbuka saja

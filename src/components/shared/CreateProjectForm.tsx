@@ -21,23 +21,26 @@ export function CreateProjectForm({ onSubmit }: CreateProjectFormProps) {
   const [teamMembers, setTeamMembers] = useState<TeamMemberFormInput[]>([
     { name: "", specialty: "" }
   ]);
-  const [isPending, startTransition] = useTransition();
+  const [isLoading, setIsLoading] = useState(false);
 
   // Disable submit if prompt is too short or if there are no team members or empty names
   const isDisabled = 
-    isPending || 
+    isLoading || 
     prompt.trim().length < 10 || 
     teamMembers.length === 0 || 
     teamMembers.some((m) => !m.name.trim());
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (isDisabled) return;
-    startTransition(async () => {
+    setIsLoading(true);
+    try {
       // Filter out any purely empty members just in case
       const validMembers = teamMembers.filter((m) => m.name.trim() !== "");
       await onSubmit(prompt.trim(), validMembers);
-    });
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   const addTeamMember = () => {
@@ -93,7 +96,7 @@ export function CreateProjectForm({ onSubmit }: CreateProjectFormProps) {
                   focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-900
                   transition-all duration-200 p-4 text-sm leading-relaxed
                 "
-                disabled={isPending}
+                disabled={isLoading}
               />
               <div className="absolute bottom-3 right-3 text-xs text-slate-300 dark:text-slate-600 select-none">
                 {prompt.length}
@@ -138,14 +141,14 @@ export function CreateProjectForm({ onSubmit }: CreateProjectFormProps) {
                       placeholder="Nama (e.g. Budi)"
                       value={member.name}
                       onChange={(e) => updateTeamMember(index, "name", e.target.value)}
-                      disabled={isPending}
+                      disabled={isLoading}
                       className="flex-1 rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
                     />
                     <Input
                       placeholder="Peran/Specialty (e.g. Frontend)"
                       value={member.specialty}
                       onChange={(e) => updateTeamMember(index, "specialty", e.target.value)}
-                      disabled={isPending}
+                      disabled={isLoading}
                       className="flex-1 rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
                     />
                     <Button
@@ -153,7 +156,7 @@ export function CreateProjectForm({ onSubmit }: CreateProjectFormProps) {
                       variant="ghost"
                       size="icon"
                       onClick={() => removeTeamMember(index)}
-                      disabled={isPending || teamMembers.length <= 1}
+                      disabled={isLoading || teamMembers.length <= 1}
                       className="shrink-0 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -167,7 +170,7 @@ export function CreateProjectForm({ onSubmit }: CreateProjectFormProps) {
                 variant="outline"
                 size="sm"
                 onClick={addTeamMember}
-                disabled={isPending || teamMembers.length >= 10}
+                disabled={isLoading || teamMembers.length >= 10}
                 className="w-full rounded-xl border-dashed border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 mt-2"
               >
                 <Plus className="w-4 h-4 mr-1" /> Tambah Anggota Tim
@@ -188,10 +191,10 @@ export function CreateProjectForm({ onSubmit }: CreateProjectFormProps) {
                 transition-all duration-200
               "
             >
-              {isPending ? (
+              {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Agen sedang berpikir...
+                  Generating tasks...
                 </>
               ) : (
                 <>
