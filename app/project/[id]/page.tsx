@@ -54,10 +54,10 @@ export default async function ProjectDetailPage({
   const doneCount = kanbanTasks.filter((t) => t.status === "DONE").length;
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-20">
+    <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 pb-20">
       {/* Header Area */}
-      <section className="border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 sticky top-0 z-40">
-        <div className="max-w-[1400px] mx-auto px-6 py-6">
+      <section className="border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 relative md:sticky top-0 z-40 shrink-0">
+        <div className="max-w-[1400px] mx-auto p-4 md:p-8">
           <Link
             href="/"
             className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-indigo-600 transition-colors mb-4"
@@ -66,7 +66,7 @@ export default async function ProjectDetailPage({
             Kembali ke Dashboard
           </Link>
 
-          <div className="flex items-start justify-between gap-6 flex-wrap mb-6">
+          <div className="flex items-start justify-between gap-3 md:gap-6 flex-wrap mb-4 md:mb-6">
             <div className="flex-1 min-w-[300px]">
               <div className="flex items-center gap-3 mb-2">
                 <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
@@ -85,7 +85,7 @@ export default async function ProjectDetailPage({
                 {project.name}
               </h1>
               {project.description && (
-                <p className="mt-2 text-sm text-slate-500 dark:text-slate-400 max-w-3xl leading-relaxed">
+                <p className="mt-2 text-sm md:text-base text-slate-500 dark:text-slate-400 max-w-3xl leading-relaxed line-clamp-2 md:line-clamp-none">
                   {project.description}
                 </p>
               )}
@@ -141,7 +141,7 @@ export default async function ProjectDetailPage({
       </section>
 
       {/* Main Board Area */}
-      <div className="max-w-[1400px] mx-auto px-6 py-8">
+      <div className="max-w-[1400px] mx-auto px-4 md:px-6 py-4 md:py-8 flex-1 w-full overflow-hidden">
         <KanbanBoard tasks={kanbanTasks} projectId={project.id} teamMembers={project.team?.members || []} />
       </div>
     </div>

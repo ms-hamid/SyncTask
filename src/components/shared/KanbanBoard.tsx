@@ -235,7 +235,7 @@ export function KanbanBoard({ tasks: initialTasks, projectId, teamMembers }: Kan
       )}
 
       <DragDropContext onDragEnd={onDragEnd}>
-        <div className="flex flex-row overflow-x-auto pb-4 snap-x snap-mandatory md:overflow-visible gap-6 w-full">
+        <div className="flex flex-nowrap overflow-x-auto pb-4 snap-x snap-mandatory md:grid md:grid-cols-3 gap-6 w-full max-w-[1400px] mx-auto">
         {COLUMNS.map((col) => {
           const colTasks = tasks
             .filter((t) => t.status === col.id)
@@ -249,7 +249,7 @@ export function KanbanBoard({ tasks: initialTasks, projectId, teamMembers }: Kan
                   {...provided.droppableProps}
                   className={`flex flex-col rounded-2xl border ${col.border} ${
                     col.bg
-                  } overflow-hidden min-h-[400px] transition-colors min-w-[300px] w-[85vw] md:w-full snap-center shrink-0 ${
+                  } overflow-hidden min-h-[400px] transition-colors min-w-[300px] w-[85vw] shrink-0 snap-center md:w-auto ${
                     snapshot.isDraggingOver ? "bg-slate-100/80 dark:bg-slate-900/80" : ""
                   }`}
                 >
