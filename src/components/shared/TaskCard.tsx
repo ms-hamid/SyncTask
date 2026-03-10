@@ -31,6 +31,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Trash2, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
+import { updateTaskStatus } from "@/src/actions/project";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 // ============================================================
 // Helpers
@@ -121,6 +123,7 @@ export const TaskCard = memo(({
   const isDirty = editTitle !== title || editDesc !== (description || "") || editAssigneeId !== (initialAssigneeId || "");
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
   // Sync state if props change
   React.useEffect(() => {
@@ -249,9 +252,31 @@ export const TaskCard = memo(({
           </DialogHeader>
 
           <div className="flex flex-wrap items-center gap-3">
-            <Badge variant="outline" className={`px-2.5 py-0.5 text-xs font-semibold rounded-full border-0 ${STATUS_ACCENT[status].replace('border-l-', 'bg-').replace('dark:border-l-', 'dark:bg-').split(' ')[0]} ${status === 'TODO' ? 'text-slate-800 bg-slate-100' : status === 'DOING' ? 'text-amber-800 bg-amber-100' : 'text-emerald-800 bg-emerald-100'} dark:bg-opacity-20`}>
-              {status}
-            </Badge>
+            <Select 
+              value={status} 
+              disabled={isUpdatingStatus}
+              onValueChange={async (val: "TODO" | "DOING" | "DONE") => {
+                const toastId = toast.loading("Mengubah status...");
+                setIsUpdatingStatus(true);
+                const res = await updateTaskStatus(id, val);
+                setIsUpdatingStatus(false);
+                if (res.success) {
+                  toast.success("Status berhasil diubah!", { id: toastId });
+                  setIsModalOpen(false); // Opsional: tutup modal setelah ubah status, atau biar terbuka saja
+                } else {
+                  toast.error("Gagal mengubah status", { id: toastId, description: res.error });
+                }
+              }}
+            >
+              <SelectTrigger className={`h-8 px-3 rounded-full border-0 font-semibold text-xs w-auto min-w-[100px] ${status === 'TODO' ? 'text-slate-800 bg-slate-100' : status === 'DOING' ? 'text-amber-800 bg-amber-100' : 'text-emerald-800 bg-emerald-100'} dark:bg-opacity-20 focus:ring-0 shadow-none`}>
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="TODO" className="text-xs font-semibold">To Do</SelectItem>
+                <SelectItem value="DOING" className="text-xs font-semibold text-amber-600 dark:text-amber-500">In Progress</SelectItem>
+                <SelectItem value="DONE" className="text-xs font-semibold text-emerald-600 dark:text-emerald-500">Done</SelectItem>
+              </SelectContent>
+            </Select>
 
             <Badge className={`px-2.5 py-0.5 text-xs font-semibold rounded-full border-0 ${colors.bg} ${colors.text}`}>
               <span className={`inline-block w-1.5 h-1.5 rounded-full mr-1.5 ${colors.dot}`} />
