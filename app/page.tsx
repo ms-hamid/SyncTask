@@ -1,13 +1,16 @@
 import { prisma } from "@/src/lib/prisma";
 import { CreateProjectSection } from "@/src/components/shared/CreateProjectSection";
-import { Sparkles, FolderKanban, Calendar, ArrowRight, LayoutDashboard } from "lucide-react";
+import { Sparkles, FolderKanban, Calendar, ArrowRight, LayoutDashboard, Rocket } from "lucide-react";
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 // ============================================================
 // Server Component — data di-fetch langsung di sini
 // Tidak ada 'use client', tidak ada useState/useEffect
 // ============================================================
 export default async function DashboardPage() {
+  const MOCK_TEAM_ID = "team-mvp-001";
+
   // Ambil semua project beserta jumlah task dan statusnya
   const projects = await prisma.project.findMany({
     orderBy: { createdAt: "desc" },
@@ -21,18 +24,41 @@ export default async function DashboardPage() {
     },
   });
 
+  // Ambil status plan team & hitung total project
+  const team = await prisma.team.findUnique({
+    where: { id: MOCK_TEAM_ID },
+    select: { planStatus: true, _count: { select: { projects: true } } }
+  });
+
+  const planStatus = team?.planStatus || "FREE";
+  const projectCount = team?._count?.projects || 0;
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
       {/* Hero / Header Section */}
       <section className="border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
         <div className="max-w-6xl mx-auto px-6 py-12 pt-20">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-linear-to-br from-indigo-500 to-purple-600">
-              <Sparkles className="w-4 h-4 text-white" />
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-linear-to-br from-indigo-500 to-purple-600">
+                <Sparkles className="w-4 h-4 text-white" />
+              </div>
+              <span className="text-sm font-semibold text-indigo-600 dark:text-indigo-400 tracking-wide">
+                SyncTask AI
+              </span>
             </div>
-            <span className="text-sm font-semibold text-indigo-600 dark:text-indigo-400 tracking-wide">
-              SyncTask AI
-            </span>
+            <div className="flex items-center gap-3">
+               <div className={`px-2.5 py-1 rounded-full text-xs font-bold border ${planStatus === 'PRO' ? 'bg-indigo-50 border-indigo-200 text-indigo-700 dark:bg-indigo-900/30 dark:border-indigo-800 dark:text-indigo-300' : 'bg-amber-50 border-amber-200 text-amber-700 dark:bg-amber-900/30 dark:border-amber-800 dark:text-amber-400'}`}>
+                 {planStatus} PLAN
+               </div>
+               {planStatus === 'FREE' && (
+                  <Link href={`/mock-checkout?teamId=${MOCK_TEAM_ID}`}>
+                    <Button size="sm" className="bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:text-slate-900 shadow-xl transition-all font-semibold rounded-xl ml-2">
+                       <Rocket className="w-4 h-4 mr-2" /> Upgrade to Pro Workspace
+                    </Button>
+                  </Link>
+               )}
+            </div>
           </div>
           <h1 className="text-4xl font-extrabold text-slate-900 dark:text-slate-50 tracking-tight">
             Ceritakan Proyekmu.
@@ -52,7 +78,7 @@ export default async function DashboardPage() {
         {/* Form Section */}
         <section>
           {/* Client wrapper: menangani toast + reset form */}
-          <CreateProjectSection />
+          <CreateProjectSection teamId={MOCK_TEAM_ID} planStatus={planStatus} projectCount={projectCount} />
         </section>
 
         {/* Projects Grid Section */}

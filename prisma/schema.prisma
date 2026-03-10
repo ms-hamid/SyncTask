@@ -24,9 +24,10 @@ model User {
 // Model: Team
 // ============================================================
 model Team {
-  id        String   @id @default(uuid())
-  name      String
-  createdAt DateTime @default(now())
+  id         String   @id @default(uuid())
+  name       String
+  planStatus String   @default("FREE")
+  createdAt  DateTime @default(now())
 
   members      TeamMembership[]
   projects     Project[]
