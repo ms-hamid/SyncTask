@@ -16,9 +16,31 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "SyncTask — AI Scrum Master",
+  title: "SyncTask | AI-Powered Agile Project Manager",
   description:
-    "Platform manajemen proyek berbasis AI yang memecah ide menjadi task terstruktur.",
+    "Transformasikan ide Anda menjadi struktur tugas Agile yang siap dikerjakan secara instan dengan bantuan AI Scrum Master. Nikmati pengalaman manajemen proyek B2B SaaS generasi masa depan.",
+  openGraph: {
+    title: "SyncTask | AI-Powered Agile Project Manager",
+    description: "Transformasikan ide Anda menjadi struktur tugas Agile yang siap dikerjakan secara instan dengan bantuan AI Scrum Master.",
+    url: "https://synctask-ai.com", // ganti dengan URL produksi yang sebenarnya
+    siteName: "SyncTask",
+    images: [
+      {
+        url: "https://raw.githubusercontent.com/shadcn-ui/ui/main/apps/www/public/og.jpg", // placeholder, silakan ganti dengan screenshot aplikasi
+        width: 1200,
+        height: 630,
+        alt: "SyncTask AI Project Manager Preview",
+      },
+    ],
+    locale: "id_ID",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "SyncTask | AI-Powered Agile Project Manager",
+    description: "Ubah prompt jadi papan Kanban lengkap dengan skor usaha & pembagian peran otomatis.",
+    images: ["https://raw.githubusercontent.com/shadcn-ui/ui/main/apps/www/public/og.jpg"], // placeholder
+  },
 };
 
 export default function RootLayout({
