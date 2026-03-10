@@ -19,8 +19,7 @@ interface CreateProjectFormProps {
 export function CreateProjectForm({ onSubmit }: CreateProjectFormProps) {
   const [prompt, setPrompt] = useState("");
   const [teamMembers, setTeamMembers] = useState<TeamMemberFormInput[]>([
-    { name: "Ahmad", specialty: "Frontend" },
-    { name: "Siti", specialty: "Backend" },
+    { name: "", specialty: "" }
   ]);
   const [isPending, startTransition] = useTransition();
 
@@ -99,6 +98,23 @@ export function CreateProjectForm({ onSubmit }: CreateProjectFormProps) {
               <div className="absolute bottom-3 right-3 text-xs text-slate-300 dark:text-slate-600 select-none">
                 {prompt.length}
               </div>
+            </div>
+            
+            <div className="flex justify-end mt-0.5">
+              <button
+                type="button"
+                onClick={() => {
+                  setPrompt("Buatkan aplikasi manajemen kasir (POS) untuk kedai kopi. Kita butuh fitur kasir real-time, cetak struk, manajemen inventori stok barang, dan dashboard laporan harian.");
+                  setTeamMembers([
+                    { name: "Budi", specialty: "Frontend" },
+                    { name: "Siti", specialty: "Backend" },
+                    { name: "Tono", specialty: "UI/UX" }
+                  ]);
+                }}
+                className="text-xs font-medium text-indigo-500 hover:text-indigo-600 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors flex items-center gap-1"
+              >
+                ✨ Coba Prompt Contoh
+              </button>
             </div>
 
             {/* Tim & Anggota */}

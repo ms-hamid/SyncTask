@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
+import confetti from "canvas-confetti";
 
 export type TaskStatus = "TODO" | "DOING" | "DONE";
 
@@ -125,6 +126,10 @@ export function KanbanBoard({ tasks: initialTasks, projectId, teamMembers }: Kan
 
     const newStatus = destination.droppableId as TaskStatus;
 
+    if (newStatus === "DONE" && source.droppableId !== "DONE") {
+      confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+    }
+
     // Hitung array order baru
     const newTasks = Array.from(tasks);
     const draggedTaskIndex = newTasks.findIndex((t) => t.id === draggableId);
@@ -230,7 +235,7 @@ export function KanbanBoard({ tasks: initialTasks, projectId, teamMembers }: Kan
       )}
 
       <DragDropContext onDragEnd={onDragEnd}>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
+        <div className="flex flex-row overflow-x-auto pb-4 snap-x snap-mandatory md:overflow-visible gap-6 w-full">
         {COLUMNS.map((col) => {
           const colTasks = tasks
             .filter((t) => t.status === col.id)
@@ -244,7 +249,7 @@ export function KanbanBoard({ tasks: initialTasks, projectId, teamMembers }: Kan
                   {...provided.droppableProps}
                   className={`flex flex-col rounded-2xl border ${col.border} ${
                     col.bg
-                  } overflow-hidden min-h-[400px] transition-colors ${
+                  } overflow-hidden min-h-[400px] transition-colors min-w-[300px] w-[85vw] md:w-full snap-center shrink-0 ${
                     snapshot.isDraggingOver ? "bg-slate-100/80 dark:bg-slate-900/80" : ""
                   }`}
                 >

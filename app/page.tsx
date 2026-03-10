@@ -116,7 +116,7 @@ export default async function DashboardPage() {
                       </h3>
                       
                       {project.description && (
-                        <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-2 flex-grow mb-6">
+                        <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-2 grow mb-6">
                           {project.description}
                         </p>
                       )}
